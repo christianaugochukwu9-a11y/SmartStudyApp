@@ -7,14 +7,12 @@ import os
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="SmartStudyApp", page_icon="🎓", layout="wide")
 
-# --- INITIALIZATION ---
-# SECURE SETUP: This pulls your key from Streamlit's "Secrets" tool
+        # --- INITIALIZATION ---
 try:
-    if "GOOGLE_API_KEY" in st.secrets:
-        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    else:
-        # Fallback for local testing - replace with your key if not using Secrets yet
-        genai.configure(api_key="YOUR_API_KEY_HERE") 
+    # This pulls the key from the Secrets you just saved
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+except Exception as e:
+    st.error("API Key not found! Please check your Streamlit Secrets settings.") 
 except Exception as e:
     st.error("API Configuration failed. Check your Secrets settings.")
 
