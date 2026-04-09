@@ -9,20 +9,19 @@ st.set_page_config(page_title="SmartStudyApp", page_icon="🎓", layout="wide")
 
 # --- INITIALIZATION ---
 try:
-    # Pulling from Streamlit Secrets for maximum security
     if "GOOGLE_API_KEY" in st.secrets:
         genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
     else:
-        st.warning("API Key not found in Secrets. Please add GOOGLE_API_KEY to your Streamlit dashboard.")
+        st.warning("API Key not found in Secrets.")
 except Exception as e:
     st.error(f"Configuration error: {e}")
 
+# Initialize session state variables
 if "messages" not in st.session_state: st.session_state.messages = []
 if "profile" not in st.session_state: st.session_state.profile = None
 if "usage_count" not in st.session_state: st.session_state.usage_count = 0
 if "max_limit" not in st.session_state: st.session_state.max_limit = 15 
 
-# UPDATED: Current stable model for 2026
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 # --- COVER PAGE ---
@@ -71,6 +70,7 @@ st.sidebar.caption("Created by: Christiana Joseph Ugochukwu - 3MTT Project")
 # --- MAIN CHAT AREA ---
 st.title("📚 SmartStudyApp")
 
+# Display previous messages
 for i, m in enumerate(st.session_state.messages):
     with st.chat_message(m["role"]):
         st.markdown(m["content"])
@@ -86,27 +86,45 @@ for i, m in enumerate(st.session_state.messages):
                         st.markdown(f'<audio src="data:audio/mp3;base64,{b64}" controls autoplay></audio>', unsafe_allow_html=True)
                         os.remove(temp_file)
                     except Exception:
-                        st.error("Audio service temporarily unreachable.")
+                        st.error("Audio service unreachable.")
 
-# --- CHAT INPUT ---
+# --- CHAT INPUT & MEMORY LOGIC ---
 if prompt := st.chat_input("Ask your tutor a question..."):
     if st.session_state.usage_count >= st.session_state.max_limit:
         st.error("Limit reached. Please upgrade to Pro.")
     else:
         st.session_state.usage_count += 1
+        
+        # 1. Add user message to UI
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        
+        # 2. Add user message to history
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"): st.markdown(prompt)
         
         with st.chat_message("assistant"):
             try:
-                # The correct method call for the current API
-                response = model.generate_content(
-                    contents=f"You are a helpful {st.session_state.profile['exam']} tutor. Answer in {lang}: {prompt}",
+                # 3. Create a chat session using current history (This is the "Memory")
+                # We format the history so Gemini understands it
+                history = [
+                    {"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]}
+                    for m in st.session_state.messages[:-1] # Exclude the current prompt we just added
+                ]
+                
+                chat = model.start_chat(history=history)
+                
+                # 4. Generate response
+                response = chat.send_message(
+                    f"Answer in {lang}: {prompt}",
                     generation_config={"temperature": creativity}
                 )
+                
                 answer = response.text
                 st.markdown(answer)
+                
+                # 5. Save assistant response to history
                 st.session_state.messages.append({"role": "assistant", "content": answer})
                 st.rerun()
+                
             except Exception as e:
                 st.error(f"Error: {e}")
