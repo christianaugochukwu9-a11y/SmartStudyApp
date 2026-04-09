@@ -8,12 +8,23 @@ import os
 st.set_page_config(page_title="SmartStudyApp", page_icon="🎓", layout="wide")
 
 # --- INITIALIZATION ---
+# SECURE SETUP: This pulls your key from Streamlit's "Secrets" tool
+try:
+    if "GOOGLE_API_KEY" in st.secrets:
+        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    else:
+        # Fallback for local testing - replace with your key if not using Secrets yet
+        genai.configure(api_key="YOUR_API_KEY_HERE") 
+except Exception as e:
+    st.error("API Configuration failed. Check your Secrets settings.")
+
 if "messages" not in st.session_state: st.session_state.messages = []
 if "profile" not in st.session_state: st.session_state.profile = None
 if "usage_count" not in st.session_state: st.session_state.usage_count = 0
 if "max_limit" not in st.session_state: st.session_state.max_limit = 15 
 
-client = genai.Client()
+# Correct model initialization for the current library version
+model = genai.GenerativeModel('gemini-pro')
 
 # --- COVER PAGE ---
 if st.session_state.profile is None:
@@ -81,7 +92,7 @@ for i, m in enumerate(st.session_state.messages):
                         st.markdown(f'<audio src="data:audio/mp3;base64,{b64}" controls autoplay></audio>', unsafe_allow_html=True)
                         os.remove(temp_file)
                     except Exception:
-                        st.error("Audio service temporarily unreachable. Try again in a moment.")
+                        st.error("Audio service temporarily unreachable.")
 
 # --- CHAT INPUT ---
 if prompt := st.chat_input("Ask your tutor a question..."):
@@ -94,14 +105,13 @@ if prompt := st.chat_input("Ask your tutor a question..."):
         
         with st.chat_message("assistant"):
             try:
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
+                response = model.generate_content(
                     contents=f"You are a helpful {st.session_state.profile['exam']} tutor. Answer in {lang}: {prompt}",
-                    config={"temperature": creativity}
+                    generation_config={"temperature": creativity}
                 )
                 answer = response.text
                 st.markdown(answer)
                 st.session_state.messages.append({"role": "assistant", "content": answer})
                 st.rerun()
-            except Exception:
-                st.error("Network issue. Please try again.")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
