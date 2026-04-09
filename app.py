@@ -7,21 +7,22 @@ import os
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="SmartStudyApp", page_icon="🎓", layout="wide")
 
-        # --- INITIALIZATION ---
+# --- INITIALIZATION ---
 try:
-    # This pulls the key from the Secrets you just saved
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    # Safely pulling the key from your Streamlit Secrets
+    if "GOOGLE_API_KEY" in st.secrets:
+        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    else:
+        st.warning("API Key not found in Secrets. Please add GOOGLE_API_KEY to your Streamlit dashboard.")
 except Exception as e:
-    st.error("API Key not found! Please check your Streamlit Secrets settings.") 
-except Exception as e:
-    st.error("API Configuration failed. Check your Secrets settings.")
+    st.error(f"Configuration error: {e}")
 
 if "messages" not in st.session_state: st.session_state.messages = []
 if "profile" not in st.session_state: st.session_state.profile = None
 if "usage_count" not in st.session_state: st.session_state.usage_count = 0
 if "max_limit" not in st.session_state: st.session_state.max_limit = 15 
 
-# Correct model initialization for the current library version
+# Correct model initialization for Gemini Pro
 model = genai.GenerativeModel('gemini-pro')
 
 # --- COVER PAGE ---
@@ -103,6 +104,7 @@ if prompt := st.chat_input("Ask your tutor a question..."):
         
         with st.chat_message("assistant"):
             try:
+                # Correct way to generate content with the GenerativeModel
                 response = model.generate_content(
                     contents=f"You are a helpful {st.session_state.profile['exam']} tutor. Answer in {lang}: {prompt}",
                     generation_config={"temperature": creativity}
@@ -112,4 +114,4 @@ if prompt := st.chat_input("Ask your tutor a question..."):
                 st.session_state.messages.append({"role": "assistant", "content": answer})
                 st.rerun()
             except Exception as e:
-                st.error(f"Error: {str(e)}")
+                st.error(f"Error generating response: {e}")
