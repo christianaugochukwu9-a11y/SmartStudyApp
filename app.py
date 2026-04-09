@@ -9,7 +9,7 @@ st.set_page_config(page_title="SmartStudyApp", page_icon="🎓", layout="wide")
 
 # --- INITIALIZATION ---
 try:
-    # Safely pulling the key from your Streamlit Secrets
+    # Pulling from Streamlit Secrets for maximum security
     if "GOOGLE_API_KEY" in st.secrets:
         genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
     else:
@@ -22,8 +22,8 @@ if "profile" not in st.session_state: st.session_state.profile = None
 if "usage_count" not in st.session_state: st.session_state.usage_count = 0
 if "max_limit" not in st.session_state: st.session_state.max_limit = 15 
 
-# Correct model initialization for Gemini Pro
-model = genai.GenerativeModel('gemini-pro')
+# UPDATED: Current stable model for 2026
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 # --- COVER PAGE ---
 if st.session_state.profile is None:
@@ -59,11 +59,6 @@ with st.sidebar.expander("⚙️ Settings"):
     creativity = st.slider("Creativity Level", 0.0, 1.0, 0.7)
     lang = st.selectbox("Response Language", ["English", "Igbo", "Hausa", "Yoruba"])
     speed = st.selectbox("Speech Speed", ["Normal", "Slow"])
-
-with st.sidebar.expander("❓ Help & Tips"):
-    st.write("1. Upload PDF notes to study.")
-    st.write("2. Click '🔊 Listen' to hear responses.")
-    st.write("3. Keep questions clear and concise.")
 
 if st.sidebar.button("🗑️ Clear Chat History"):
     st.session_state.messages = []
@@ -104,7 +99,7 @@ if prompt := st.chat_input("Ask your tutor a question..."):
         
         with st.chat_message("assistant"):
             try:
-                # Correct way to generate content with the GenerativeModel
+                # The correct method call for the current API
                 response = model.generate_content(
                     contents=f"You are a helpful {st.session_state.profile['exam']} tutor. Answer in {lang}: {prompt}",
                     generation_config={"temperature": creativity}
@@ -114,4 +109,4 @@ if prompt := st.chat_input("Ask your tutor a question..."):
                 st.session_state.messages.append({"role": "assistant", "content": answer})
                 st.rerun()
             except Exception as e:
-                st.error(f"Error generating response: {e}")
+                st.error(f"Error: {e}")
